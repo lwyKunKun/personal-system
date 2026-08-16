@@ -1,3 +1,9 @@
+<!--
+  本仓库为演示型 Next.js 应用（Vibe-Research 风格首页）
+  - 以深色主题展示市场信息卡与 AI 投研模块
+  - 代码注释使用中文（遵循项目 CLAUDE.md 约定）
+-->
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

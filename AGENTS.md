@@ -1,3 +1,10 @@
+<!--
+	AGENTS.md: agent 配置与 Next.js 注意事项
+	说明：
+	- 本文件包含 Next.js 特殊 agent 规则提示，帮助开发者理解本仓库使用的 Next.js 版本差异
+	- 该注释块为文件级说明，非可执行配置
+-->
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

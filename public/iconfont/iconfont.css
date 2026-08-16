@@ -1,0 +1,37 @@
+/* 本地示例 iconfont 样式（仅用于本地测试）
+   说明：
+   - 提供若干常用 demo 类名（如 icon-gupiao），将通过 :before 伪元素插入 emoji
+   - 正式使用时请替换为真实的 iconfont/阿里图标库样式表
+*/
+
+.iconfont {
+  display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
+  font-style: normal;
+}
+
+.iconfont:before {
+  display: inline-block;
+  margin-right: 6px;
+}
+
+/* 示例图标映射为 emoji，便于本地调试 */
+.icon-gupiao:before {
+  content: "📈";
+}
+.icon-home:before {
+  content: "🏠";
+}
+.icon-chart:before {
+  content: "📊";
+}
+.icon-book:before {
+  content: "📚";
+}
+.icon-star:before {
+  content: "⭐";
+}
+.icon-settings:before {
+  content: "⚙️";
+}

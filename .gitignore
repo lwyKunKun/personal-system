@@ -1,3 +1,6 @@
+# Git 忽略规则说明：
+# - 用于避免把依赖、构建产物、环境变量等临时文件提交到仓库
+# - 这些规则可减少噪音，保证仓库更干净、更稳定
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies

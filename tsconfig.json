@@ -1,4 +1,8 @@
 {
+  // TypeScript 配置说明：
+  // - 定义项目的编译目标和 JSX 处理方式
+  // - 支持 React + Next.js 的 App Router 结构
+  // - 允许 JS 文件参与类型检查，并保留 bundler 模式解析
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -22,13 +26,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts", "**/*.mts"],
   "exclude": ["node_modules"]
 }
