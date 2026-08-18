@@ -6,12 +6,22 @@
 // - 让 Sidebar 组件和 settings 页面共用同一份数据源
 // - 支持 Lucide React 图标组件与 emoji 兜底
 
+export type MenuGroup = "system" | "project" | "personal"
+
 export interface SidebarMenuItem {
+  id?: string
   label: string
+  group?: MenuGroup
   icon?: string
   iconName?: string
   iconClass?: string
   active?: boolean
+  visible?: boolean
+  sortOrder?: number
+  // 可选的页面路由，当存在时点击该项会导航到对应页面
+  path?: string
+  // 可选权限标记（占位，后续可用于权限控制）
+  roles?: string[]
   children?: SidebarMenuItem[]
 }
 
@@ -27,38 +37,55 @@ function withChildren(children?: SidebarMenuItem[]): SidebarMenuItem[] | undefin
 
 export const DEFAULT_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   {
-    label: "每日复盘",
-    iconName: "TrendingUp",
-    active: true,
+    id: "system",
+    label: "系统",
+    group: "system",
+    visible: true,
+    sortOrder: 10,
+    iconName: "Settings",
     children: [
-      { label: "A股日历", iconName: "CalendarRange" },
-      { label: "市场情绪", iconName: "Activity" },
+      { id: "system-menus", label: "菜单管理", group: "system", visible: true, sortOrder: 10, iconName: "PanelTop", path: "/system?tab=menus" },
+      { id: "system-routes", label: "路由管理", group: "system", visible: true, sortOrder: 20, iconName: "Route", path: "/system?tab=routes" },
+      { id: "system-permissions", label: "权限管理", group: "system", visible: true, sortOrder: 30, iconName: "ShieldCheck", path: "/system?tab=permissions" },
+      { id: "system-settings", label: "设置", group: "system", visible: true, sortOrder: 40, iconName: "SlidersHorizontal", path: "/system?tab=settings" },
     ],
   },
   {
-    label: "资讯雷达",
-    iconName: "Newspaper",
+    id: "project",
+    label: "项目",
+    group: "project",
+    visible: true,
+    sortOrder: 20,
+    iconName: "FolderOpen",
+    active: true,
     children: [
-      { label: "宏观资讯", iconName: "BookOpenText" },
-      { label: "行业速递", iconName: "ChartColumnBig" },
+      { id: "project-stock", label: "股票", group: "project", visible: true, sortOrder: 10, iconName: "CandlestickChart", path: "/projects/stock" },
+      { id: "project-bookshelf", label: "书架", group: "project", visible: true, sortOrder: 20, iconName: "Library", path: "/projects/bookshelf" },
+      { id: "project-llm-wiki", label: "llm-wiki", group: "project", visible: true, sortOrder: 30, iconName: "BookOpenText", path: "/projects/llm-wiki" },
+      { id: "project-records", label: "研究记录", group: "project", visible: true, sortOrder: 40, iconName: "NotebookPen", path: "/projects/records" },
+      { id: "project-ai", label: "AI 算法", group: "project", visible: true, sortOrder: 50, iconName: "BrainCircuit", path: "/projects/ai" },
     ],
   },
-  { label: "板块中心", iconName: "LayoutGrid" },
-  { label: "人物机器人", iconName: "Bot" },
-  { label: "AI 算法", iconName: "BrainCircuit" },
-  { label: "HBM", iconName: "Cpu" },
-  { label: "光互联", iconName: "CircuitBoard" },
-  { label: "商业航天", iconName: "Rocket" },
-  { label: "生物医药", iconName: "Pill" },
-  { label: "个股数据", iconName: "BarChart3" },
-  { label: "我的持仓", iconName: "Wallet" },
-  { label: "研究记录", iconName: "NotebookPen" },
-  { label: "菜单管理", iconName: "Settings" },
+  {
+    id: "personal",
+    label: "个人",
+    group: "personal",
+    visible: true,
+    sortOrder: 30,
+    iconName: "UserRound",
+    children: [
+      { id: "personal-recent", label: "最近", group: "personal", visible: true, sortOrder: 10, iconName: "Clock3", path: "/personal/recent" },
+      { id: "personal-favorites", label: "收藏", group: "personal", visible: true, sortOrder: 20, iconName: "Star", path: "/personal/favorites" },
+      { id: "personal-common", label: "常用", group: "personal", visible: true, sortOrder: 30, iconName: "Sparkles", path: "/personal/common" },
+    ],
+  },
 ]
 
 function normalizeSidebarItem(item: SidebarMenuItem): SidebarMenuItem {
   return {
     ...item,
+    visible: item.visible ?? true,
+    sortOrder: item.sortOrder ?? 0,
     children: withChildren(item.children?.map(normalizeSidebarItem)),
   }
 }
