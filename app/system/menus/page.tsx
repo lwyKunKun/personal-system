@@ -163,7 +163,7 @@ export default function MenusManagerPage() {
 
   const addItem = () => {
     const label = newLabel.trim(); if (!label) { setStatusText("菜单名称不能为空"); return }
-    const next = [...items, { label, icon: newIcon.trim() || undefined, iconName: newIconName.trim() || undefined, routeId: newRouteId || undefined, roles: newRoles.trim() ? newRoles.split(",").map(s => s.trim()).filter(Boolean) : undefined, visible: newVisible, sortOrder: items.length, active: false }]
+    const next = [...items, { label, icon: newIcon.trim() || undefined, iconName: newIconName.trim() || undefined, routeId: newRouteId || undefined, roles: newRoles.trim() ? newRoles.split(",").map(s => s.trim()).filter(Boolean) : undefined, visible: newVisible, sortOrder: items.length }]
     persist(next); setNewLabel(""); setNewIcon(""); setNewIconName(""); setNewRouteId(""); setNewRoles(""); setNewVisible(true); setStatusText("已添加菜单分组")
   }
 
@@ -171,7 +171,7 @@ export default function MenusManagerPage() {
     const label = newLabel.trim(); if (!label) { setStatusText("子菜单名称不能为空"); return }
     setItems((prev) => {
       const next = JSON.parse(JSON.stringify(prev)) as SidebarMenuItem[]; const target = getItemByPath(next, path); if (!target) return prev
-      target.children = [...(target.children ?? []), { label, icon: newIcon.trim() || undefined, iconName: newIconName.trim() || undefined, visible: newVisible, sortOrder: target.children?.length ?? 0, routeId: newRouteId || undefined, roles: newRoles.trim() ? newRoles.split(",").map(s => s.trim()).filter(Boolean) : undefined, active: false }]
+      target.children = [...(target.children ?? []), { label, icon: newIcon.trim() || undefined, iconName: newIconName.trim() || undefined, visible: newVisible, sortOrder: target.children?.length ?? 0, routeId: newRouteId || undefined, roles: newRoles.trim() ? newRoles.split(",").map(s => s.trim()).filter(Boolean) : undefined }]
       saveStoredSidebarItems(next); return next
     })
     setNewLabel(""); setNewIcon(""); setNewIconName(""); setNewRouteId(""); setNewRoles(""); setNewVisible(true); setStatusText("已添加子菜单")

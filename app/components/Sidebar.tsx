@@ -8,6 +8,8 @@ import { getCurrentUserProfile } from "../lib/user"
 import { getPersonalState, savePersonalState } from "../lib/personal"
 import { resolveMenuPath, type SidebarMenuItem } from "../lib/sidebar-menu"
 import { getStoredRoutes, type RouteDefinition } from "../lib/routes"
+import { getAllPermissionIds } from "../lib/permissions"
+import { initializeDefaultRolePermissions } from "../lib/roles"
 
 interface SidebarProps {
   items: SidebarMenuItem[]
@@ -46,11 +48,15 @@ export default function Sidebar({ items }: SidebarProps) {
     loadRoutes()
     const syncUser = () => setCurrentUser(getCurrentUserProfile())
     syncUser()
+    // 初始化默认角色权限
+    initializeDefaultRolePermissions(getAllPermissionIds())
     window.addEventListener("vibe:routes-updated", loadRoutes)
     window.addEventListener("vibe:user-updated", syncUser)
+    window.addEventListener("vibe:roles-updated", syncUser)
     return () => {
       window.removeEventListener("vibe:routes-updated", loadRoutes)
       window.removeEventListener("vibe:user-updated", syncUser)
+      window.removeEventListener("vibe:roles-updated", syncUser)
     }
   }, [])
 
@@ -110,7 +116,10 @@ export default function Sidebar({ items }: SidebarProps) {
 
     const toggleExpand = () => {
       if (item.id && hasChildren) {
-        setExpanded((prev) => ({ ...prev, [item.id]: !(prev[item.id] ?? true) }))
+        setExpanded((prev) => {
+          const key = item.id as string
+          return { ...prev, [key]: !(prev[key] ?? true) }
+        })
       }
     }
 

@@ -2,6 +2,11 @@
 // 路由注册表：系统中所有可导航的路由定义
 export type RouteType = "builtin" | "page" | "link" | "iframe"
 
+export interface RouteButton {
+  key: string
+  name: string
+}
+
 export interface RouteDefinition {
   id: string
   path: string
@@ -16,25 +21,26 @@ export interface RouteDefinition {
   url?: string
   builtin?: boolean
   description?: string
+  buttons?: RouteButton[]
   createdAt?: number
   updatedAt?: number
 }
 
 export const ROUTES_STORAGE_KEY = "vibe:routes"
-export const ROUTES_VERSION = 1
+export const ROUTES_VERSION = 2
 
 export const DEFAULT_ROUTES: RouteDefinition[] = [
-  { id: "system-menus", path: "/system/menus", type: "builtin", title: "菜单管理", iconName: "PanelTop", group: "system", builtin: true, visible: true, description: "配置导航结构、分组、排序与权限" },
-  { id: "system-routes", path: "/system/routes", type: "builtin", title: "路由管理", iconName: "Route", group: "system", builtin: true, visible: true, description: "管理页面映射与入口定义" },
-  { id: "system-permissions", path: "/system/permissions", type: "builtin", title: "权限管理", iconName: "ShieldCheck", group: "system", builtin: true, visible: true, description: "定义角色策略与访问控制" },
-  { id: "system-settings", path: "/system/settings", type: "builtin", title: "系统设置", iconName: "SlidersHorizontal", group: "system", builtin: true, visible: true, description: "系统基础配置与运行参数" },
-  { id: "project-stock", path: "/projects/stock", type: "builtin", title: "股票", iconName: "CandlestickChart", group: "project", builtin: true, visible: true },
-  { id: "project-bookshelf", path: "/projects/bookshelf", type: "builtin", title: "书架", iconName: "Library", group: "project", builtin: true, visible: true },
+  { id: "system-menus", path: "/system/menus", type: "builtin", title: "菜单管理", iconName: "PanelTop", group: "system", builtin: true, visible: true, description: "配置导航结构、分组、排序与权限", buttons: [{ key: "create", name: "新增菜单" }, { key: "edit", name: "编辑菜单" }, { key: "delete", name: "删除菜单" }] },
+  { id: "system-routes", path: "/system/routes", type: "builtin", title: "路由管理", iconName: "Route", group: "system", builtin: true, visible: true, description: "管理页面映射与入口定义", buttons: [{ key: "create", name: "新建路由" }, { key: "edit", name: "编辑路由" }, { key: "delete", name: "删除路由" }] },
+  { id: "system-permissions", path: "/system/permissions", type: "builtin", title: "权限管理", iconName: "ShieldCheck", group: "system", builtin: true, visible: true, description: "定义角色策略与访问控制", buttons: [{ key: "create_role", name: "新增角色" }, { key: "edit_role", name: "编辑角色" }, { key: "delete_role", name: "删除角色" }, { key: "create_user", name: "新增用户" }, { key: "edit_user", name: "编辑用户" }, { key: "delete_user", name: "删除用户" }] },
+  { id: "system-settings", path: "/system/settings", type: "builtin", title: "系统设置", iconName: "SlidersHorizontal", group: "system", builtin: true, visible: true, description: "系统基础配置与运行参数", buttons: [{ key: "save", name: "保存设置" }] },
+  { id: "project-stock", path: "/projects/stock", type: "builtin", title: "股票", iconName: "CandlestickChart", group: "project", builtin: true, visible: true, buttons: [{ key: "add", name: "添加股票" }, { key: "refresh", name: "刷新行情" }] },
+  { id: "project-bookshelf", path: "/projects/bookshelf", type: "builtin", title: "书架", iconName: "Library", group: "project", builtin: true, visible: true, buttons: [{ key: "add", name: "添加书籍" }] },
   { id: "project-llm-wiki", path: "/projects/llm-wiki", type: "builtin", title: "llm-wiki", iconName: "BookOpenText", group: "project", builtin: true, visible: true },
-  { id: "project-records", path: "/projects/records", type: "builtin", title: "研究记录", iconName: "NotebookPen", group: "project", builtin: true, visible: true },
+  { id: "project-records", path: "/projects/records", type: "builtin", title: "研究记录", iconName: "NotebookPen", group: "project", builtin: true, visible: true, buttons: [{ key: "create", name: "新建记录" }, { key: "edit", name: "编辑记录" }, { key: "delete", name: "删除记录" }] },
   { id: "project-ai", path: "/projects/ai", type: "builtin", title: "AI 算法", iconName: "BrainCircuit", group: "project", builtin: true, visible: true },
   { id: "personal-recent", path: "/personal/recent", type: "builtin", title: "最近", iconName: "Clock3", group: "personal", builtin: true, visible: true },
-  { id: "personal-favorites", path: "/personal/favorites", type: "builtin", title: "收藏", iconName: "Star", group: "personal", builtin: true, visible: true },
+  { id: "personal-favorites", path: "/personal/favorites", type: "builtin", title: "收藏", iconName: "Star", group: "personal", builtin: true, visible: true, buttons: [{ key: "add", name: "添加收藏" }, { key: "remove", name: "取消收藏" }] },
   { id: "personal-common", path: "/personal/common", type: "builtin", title: "常用", iconName: "Sparkles", group: "personal", builtin: true, visible: true },
   { id: "home", path: "/", type: "builtin", title: "首页", iconName: "Home", builtin: true, visible: false },
 ]
@@ -46,6 +52,7 @@ function normalizeRoute(route: RouteDefinition): RouteDefinition {
     roles: route.roles ?? [],
     target: route.target ?? (route.type === "link" ? "_blank" : "_self"),
     builtin: route.builtin ?? false,
+    buttons: route.buttons ?? [],
   }
 }
 
@@ -92,9 +99,21 @@ export function getStoredRoutes(): RouteDefinition[] {
     }
     const parsed = JSON.parse(raw) as RouteDefinition[]
     if (Array.isArray(parsed) && parsed.length > 0) {
-      const storedIds = new Set(parsed.map((r) => r.id))
-      const missing = DEFAULT_ROUTES.filter((r) => !storedIds.has(r.id))
-      return [...parsed.map(normalizeRoute), ...missing.map(normalizeRoute)]
+      const storedMap = new Map(parsed.map((r) => [r.id, r]))
+      const result: RouteDefinition[] = []
+      for (const def of DEFAULT_ROUTES) {
+        const stored = storedMap.get(def.id)
+        if (stored) {
+          result.push(normalizeRoute({ ...def, ...stored, buttons: def.buttons || stored.buttons || [] }))
+          storedMap.delete(def.id)
+        } else {
+          result.push(normalizeRoute(def))
+        }
+      }
+      for (const [, rest] of storedMap) {
+        result.push(normalizeRoute(rest))
+      }
+      return result
     }
   } catch (error) { console.warn("Invalid routes data, reset to defaults", error) }
   return DEFAULT_ROUTES.map(normalizeRoute)
