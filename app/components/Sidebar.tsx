@@ -1,23 +1,25 @@
 "use client"
 import Link from "next/link"
-import React, { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
+import React, { useEffect, useMemo, useState } from "react"
 import * as LucideIcons from "lucide-react"
 import { filterSidebarItemsByRoles } from "../lib/access"
 import { getCurrentUserProfile } from "../lib/user"
 import { getPersonalState, savePersonalState } from "../lib/personal"
-import { getStoredSidebarItems, type SidebarMenuItem } from "../lib/sidebar-menu"
+import { resolveMenuPath, type SidebarMenuItem } from "../lib/sidebar-menu"
+import { getStoredRoutes, type RouteDefinition } from "../lib/routes"
 
-// Sidebar 客户端组件
-// 作用：
-// - 读取并渲染用户自定义的左侧菜单
-// - 递归展示子菜单层级
-// - 使用 Lucide React 组件渲染图标
-// - 提供入口跳转到独立的菜单管理设置页
+interface SidebarProps {
+  items: SidebarMenuItem[]
+}
 
-interface Props {
-  defaultItems: SidebarMenuItem[]
-  selectedId?: string
-  onSelect?: (item: SidebarMenuItem) => void
+const ICON_MAP = LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>
+
+const renderLucideIcon = (iconName?: string) => {
+  if (!iconName) return <span className="text-base">◌</span>
+  const Icon = ICON_MAP[iconName]
+  if (!Icon) return <span className="text-[11px] font-semibold">{iconName.slice(0, 1)}</span>
+  return <Icon className="h-4 w-4" />
 }
 
 const normalizeIconClass = (value?: string) => {
@@ -26,117 +28,150 @@ const normalizeIconClass = (value?: string) => {
   return /^iconfont\s+/i.test(trimmed) ? trimmed : `iconfont ${trimmed}`
 }
 
-const ICON_MAP = LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>
-
-const renderLucideIcon = (iconName?: string) => {
-  if (!iconName) return <span className="text-base">◌</span>
-
-  const Icon = ICON_MAP[iconName]
-  if (!Icon) {
-    return <span className="text-[11px] font-semibold">{iconName.slice(0, 1)}</span>
-  }
-
-  return <Icon className="h-4 w-4" />
+// 判断路径是否激活（精确匹配或子路径匹配）
+function isPathActive(currentPath: string, itemPath: string): boolean {
+  if (itemPath === "/" ) return currentPath === "/"
+  if (!itemPath) return false
+  return currentPath === itemPath || currentPath.startsWith(itemPath + "/") || currentPath.startsWith(itemPath + "?")
 }
 
-export default function Sidebar({ defaultItems, selectedId, onSelect }: Props) {
-  // 本地状态：用来渲染菜单列表
-  const [items, setItems] = useState<SidebarMenuItem[]>(defaultItems || [])
+export default function Sidebar({ items }: SidebarProps) {
+  const pathname = usePathname()
+  const [routes, setRoutes] = useState<RouteDefinition[]>([])
   const [currentUser, setCurrentUser] = useState(getCurrentUserProfile())
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
-  // 页面加载时读取本地持久化菜单；如果没有则使用默认菜单
   useEffect(() => {
-    const stored = getStoredSidebarItems()
-    setItems(stored)
-
+    const loadRoutes = () => setRoutes(getStoredRoutes())
+    loadRoutes()
     const syncUser = () => setCurrentUser(getCurrentUserProfile())
     syncUser()
+    window.addEventListener("vibe:routes-updated", loadRoutes)
     window.addEventListener("vibe:user-updated", syncUser)
-    return () => window.removeEventListener("vibe:user-updated", syncUser)
-  }, [defaultItems])
+    return () => {
+      window.removeEventListener("vibe:routes-updated", loadRoutes)
+      window.removeEventListener("vibe:user-updated", syncUser)
+    }
+  }, [])
+
+  // 根据当前路径自动展开包含当前页面的分组
+  useEffect(() => {
+    const shouldExpand: Record<string, boolean> = {}
+    const checkExpand = (list: SidebarMenuItem[], parentId?: string) => {
+      for (const item of list) {
+        const resolved = resolveMenuPath(item, routes)
+        if (resolved.href && isPathActive(pathname, resolved.href) && parentId) {
+          shouldExpand[parentId] = true
+        }
+        if (item.children && item.children.length > 0) {
+          checkExpand(item.children, item.id)
+        }
+      }
+    }
+    checkExpand(items)
+    setExpanded((prev) => ({ ...prev, ...shouldExpand }))
+  }, [pathname, items, routes])
 
   const currentRoles = currentUser.roles
-  const visibleItems = filterSidebarItemsByRoles(items, currentRoles)
+  const visibleItems = useMemo(() => filterSidebarItemsByRoles(items, currentRoles), [items, currentRoles])
 
-  const recordRecentVisit = (path?: string) => {
-    if (!path) return
+  const recordRecentVisit = (href: string) => {
+    if (!href || href.startsWith("/system")) return
+    if (href === "/" ) return
     const state = getPersonalState()
-    const recent = [path, ...state.recent.filter((item) => item !== path)].slice(0, 12)
+    const recent = [href, ...state.recent.filter((item) => item !== href)].slice(0, 12)
     savePersonalState({ ...state, recent })
   }
 
   const renderIcon = (item: SidebarMenuItem) => {
-    if (item.iconName) {
-      return renderLucideIcon(item.iconName)
-    }
+    // 优先使用路由定义中的图标，fallback 到菜单自身图标
+    const route = item.routeId ? routes.find((r) => r.id === item.routeId) : undefined
+    const iconName = item.iconName ?? route?.iconName
+    const icon = item.icon ?? route?.icon
+    const iconClass = item.iconClass
 
-    if (item.iconClass) {
-      return <span className={normalizeIconClass(item.iconClass)} aria-hidden="true" />
-    }
-
-    return <span className="text-base">{item.icon || "◌"}</span>
+    if (iconName) return renderLucideIcon(iconName)
+    if (iconClass) return <span className={normalizeIconClass(iconClass)} aria-hidden="true" />
+    return <span className="text-base">{icon || "◌"}</span>
   }
 
   const renderItem = (item: SidebarMenuItem, depth = 0): React.ReactNode => {
     const hasChildren = Array.isArray(item.children) && item.children.length > 0
-    const isSelected = selectedId === item.id
-    const isSystemTab = item.path?.startsWith("/system")
+    const resolved = resolveMenuPath(item, routes)
+    const isActive = resolved.href ? isPathActive(pathname, resolved.href) : false
+    const isExpanded = item.id ? (expanded[item.id] !== false) : true
+    const isLink = resolved.href && !hasChildren
+    const isExternal = resolved.isExternal
 
     const containerClass = depth > 0 ? "ml-3 border-l border-white/8 pl-3" : ""
     const baseButtonClass = `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] transition ${
-      isSelected || item.active ? "bg-[#f68f4d] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_12px_20px_rgba(246,143,77,0.22)]" : "text-slate-200 hover:bg-[#111a2b]"
+      isActive ? "bg-[#f68f4d] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_12px_20px_rgba(246,143,77,0.22)]" : "text-slate-200 hover:bg-[#111a2b]"
     }`
 
-    const handleClick = () => {
-      if (item.path && onSelect) {
-        if (isSystemTab) {
-          onSelect(item)
-          recordRecentVisit(item.path)
-          return
-        }
+    const toggleExpand = () => {
+      if (item.id && hasChildren) {
+        setExpanded((prev) => ({ ...prev, [item.id]: !(prev[item.id] ?? true) }))
       }
+    }
 
-      if (item.path) {
-        recordRecentVisit(item.path)
-      }
+    const handleClick = () => {
+      if (resolved.href) recordRecentVisit(resolved.href)
+      if (hasChildren) toggleExpand()
     }
 
     const content = (
       <>
         <span className="flex w-4 justify-center text-center">{renderIcon(item)}</span>
         <span className="truncate">{item.label}</span>
-        {hasChildren ? <span className="ml-auto text-[10px] text-slate-400">▾</span> : null}
+        {hasChildren ? <span className="ml-auto text-[10px] text-slate-400">{isExpanded ? "▾" : "▸"}</span> : null}
+        {isExternal && !hasChildren ? <span className="ml-auto text-[10px] text-slate-400">↗</span> : null}
       </>
     )
 
     return (
-      <div key={`${item.label}-${depth}`} className={containerClass}>
-        {item.path && !isSystemTab ? (
-          <Link href={item.path} className={baseButtonClass} onClick={handleClick}>
-            {content}
-          </Link>
+      <div key={`${item.id || item.label}-${depth}`} className={containerClass}>
+        {isLink && !hasChildren ? (
+          isExternal ? (
+            <a
+              href={resolved.href}
+              target={resolved.target || "_blank"}
+              rel="noopener noreferrer"
+              className={baseButtonClass}
+              onClick={handleClick}
+            >
+              {content}
+            </a>
+          ) : (
+            <Link href={resolved.href} className={baseButtonClass} onClick={handleClick}>
+              {content}
+            </Link>
+          )
         ) : (
-          <button
-            type="button"
-            className={baseButtonClass}
-            onClick={() => {
-              handleClick()
-              if (onSelect && item.id) onSelect(item)
-            }}
-          >
+          <button type="button" className={baseButtonClass} onClick={handleClick}>
             {content}
           </button>
         )}
 
-        {hasChildren ? <div className="mt-1 space-y-1">{item.children?.map((child) => renderItem(child, depth + 1))}</div> : null}
+        {hasChildren && isExpanded ? (
+          <div className="mt-1 space-y-1">{item.children?.map((child) => renderItem(child, depth + 1))}</div>
+        ) : null}
       </div>
     )
   }
 
   return (
-    <div>
-      {/* 菜单列表：递归展示主菜单和子菜单 */}
-      <nav className="space-y-1.5">{visibleItems.map((item) => renderItem(item))}</nav>
-    </div>
+    <nav className="space-y-1.5">
+      {/* 首页入口 */}
+      <Link
+        href="/"
+        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] transition ${
+          pathname === "/" ? "bg-[#f68f4d] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_12px_20px_rgba(246,143,77,0.22)]" : "text-slate-200 hover:bg-[#111a2b]"
+        }`}
+      >
+        <span className="flex w-4 justify-center text-center">{renderLucideIcon("Home")}</span>
+        <span className="truncate">首页</span>
+      </Link>
+      {visibleItems.map((item) => renderItem(item))}
+    </nav>
   )
 }
