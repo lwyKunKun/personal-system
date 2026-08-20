@@ -39,22 +39,30 @@ function PermissionTree({
         const isGroup = node.type === "group"
         const isButton = node.type === "button"
 
-        // 计算该节点下所有子权限ID
-        const childIds: string[] = []
-        const collectIds = (n: PermissionNode) => {
-          if (n.type !== "group") childIds.push(n.id)
-          n.children?.forEach(collectIds)
+        // 收集该节点下所有可勾选的权限ID（不包含group类型）
+        const collectCheckableIds = (n: PermissionNode): string[] => {
+          const ids: string[] = []
+          if (n.type !== "group") ids.push(n.id)
+          n.children?.forEach((c) => ids.push(...collectCheckableIds(c)))
+          return ids
         }
-        if (hasChildren) collectIds(node)
+        const checkableIds = hasChildren ? collectCheckableIds(node) : (node.type !== "group" ? [node.id] : [])
 
-        const allChecked = !isGroup && childIds.length > 0 && childIds.every((id) => selected.has(id))
-        const someChecked = !allChecked && !isGroup && childIds.some((id) => selected.has(id))
+        const allChecked = checkableIds.length > 0 && checkableIds.every((id) => selected.has(id))
+        const someChecked = !allChecked && checkableIds.some((id) => selected.has(id))
+
+        const handleCheckChange = (checked: boolean) => {
+          if (checkableIds.length > 0) {
+            checkableIds.forEach((id) => onChange(id, checked))
+          } else if (!isGroup) {
+            onChange(node.id, checked)
+          }
+        }
 
         return (
           <div key={node.id}>
             <div
               className={`flex items-center gap-1.5 rounded-lg py-1 px-1.5 hover:bg-white/5 ${isGroup ? "mt-2 first:mt-0" : ""}`}
-              style={{ paddingLeft: depth > 0 ? undefined : undefined }}
             >
               {hasChildren ? (
                 <button onClick={() => onToggleExpand(node.id)} className="flex h-4 w-4 shrink-0 items-center justify-center text-slate-400 hover:text-slate-200">
@@ -64,32 +72,20 @@ function PermissionTree({
                 <span className="h-4 w-4 shrink-0" />
               )}
 
-              {isGroup ? (
-                <span className={`text-xs font-semibold uppercase tracking-wider ${depth === 0 ? "text-slate-300" : "text-slate-400"}`}>
+              <label className="flex flex-1 cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  ref={(el) => { if (el) el.indeterminate = someChecked }}
+                  onChange={(e) => handleCheckChange(e.target.checked)}
+                  className="h-3.5 w-3.5 shrink-0 rounded border-slate-500 accent-[#f68f4d]"
+                />
+                <span className={`text-sm ${isGroup ? (depth === 0 ? "font-semibold text-slate-300" : "font-medium text-slate-300") : isButton ? "text-slate-400" : "text-slate-200"}`}>
                   {node.name}
                 </span>
-              ) : (
-                <label className="flex flex-1 cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={allChecked}
-                    ref={(el) => { if (el) el.indeterminate = someChecked }}
-                    onChange={(e) => {
-                      const checked = e.target.checked
-                      if (childIds.length > 0) {
-                        childIds.forEach((id) => onChange(id, checked))
-                      } else {
-                        onChange(node.id, checked)
-                      }
-                    }}
-                    className="h-3.5 w-3.5 shrink-0 rounded border-slate-500 accent-[#f68f4d]"
-                  />
-                  <span className={`text-sm ${isButton ? "text-slate-400" : "text-slate-200"}`}>
-                    {node.name}
-                  </span>
-                  {isButton && <span className="ml-auto rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-500">按钮</span>}
-                </label>
-              )}
+                {isButton && <span className="ml-auto rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-500">按钮</span>}
+                {isGroup && depth === 0 && <span className="ml-auto rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-500">分组</span>}
+              </label>
             </div>
             {hasChildren && isExpanded && (
               <PermissionTree

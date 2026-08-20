@@ -13,7 +13,7 @@ import {
   type RouteDefinition,
   type RouteType,
 } from "../../lib/routes"
-import { findMenuItemsByRouteId, getStoredSidebarItems, saveStoredSidebarItems, type SidebarMenuItem } from "../../lib/sidebar-menu"
+import { findMenuItemsByRouteId, getGroupLabelByPrefix, getMenuGroups, getStoredSidebarItems, saveStoredSidebarItems, type MenuGroupInfo, type SidebarMenuItem } from "../../lib/sidebar-menu"
 
 const ICON_MAP = LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>
 
@@ -42,21 +42,26 @@ function renderIcon(iconName?: string, className = "h-4 w-4") {
 // 新增/编辑路由弹窗
 function RouteFormModal({
   editing,
+  menuGroups,
+  defaultGroup,
   onClose,
   onSave,
 }: {
   editing?: RouteDefinition | null
+  menuGroups: MenuGroupInfo[]
+  defaultGroup?: string
   onClose: () => void
   onSave: () => void
 }) {
   const isEdit = !!editing
   const isBuiltin = editing?.builtin
+  const firstGroup = menuGroups[0]?.pathPrefix ?? "/system"
   const [form, setForm] = useState({
     title: editing?.title ?? "",
     path: editing?.path ?? "",
     type: (editing?.type ?? "page") as RouteType,
     iconName: editing?.iconName ?? "",
-    group: editing?.group ?? "project" as "system" | "project" | "personal",
+    group: editing?.group ?? defaultGroup ?? firstGroup,
     url: editing?.url ?? "",
     visible: editing?.visible ?? true,
     rolesText: (editing?.roles ?? []).join(","),
@@ -64,13 +69,24 @@ function RouteFormModal({
     target: editing?.target ?? "_self" as "_self" | "_blank",
   })
 
+  const currentPrefix = form.group
+
   const handleSave = () => {
     if (!form.title.trim()) { alert("请输入路由标题"); return }
     if (!form.path.trim()) { alert("请输入路由路径"); return }
+    let finalPath = form.path.trim()
+    // 如果是页面路由且不是外链/iframe，自动补全分组前缀
+    if (form.type === "page" && currentPrefix) {
+      if (!finalPath.startsWith("/") && !finalPath.startsWith("http")) {
+        finalPath = `${currentPrefix}/${finalPath}`
+      } else if (finalPath.startsWith("/") && !finalPath.startsWith(currentPrefix + "/") && finalPath !== currentPrefix) {
+        // 输入了完整路径但前缀不匹配，以用户输入为准
+      }
+    }
     const roles = form.rolesText.trim() ? form.rolesText.split(",").map((s) => s.trim()).filter(Boolean) : []
     const payload = {
       title: form.title.trim(),
-      path: form.path.trim(),
+      path: finalPath,
       type: form.type,
       iconName: form.iconName.trim() || undefined,
       group: form.group,
@@ -113,17 +129,38 @@ function RouteFormModal({
           </label>
 
           <label className="space-y-1.5">
-            <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">分组</span>
-            <select value={form.group} onChange={(e) => setForm({ ...form, group: e.target.value as any })} className="w-full rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2.5 text-sm text-slate-100 outline-none">
-              <option value="system">系统</option>
-              <option value="project">项目</option>
-              <option value="personal">个人</option>
+            <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">所属菜单</span>
+            <select value={form.group} onChange={(e) => setForm({ ...form, group: e.target.value })} className="w-full rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2.5 text-sm text-slate-100 outline-none">
+              {menuGroups.map((g) => (
+                <option key={g.pathPrefix} value={g.pathPrefix}>{g.label}（{g.pathPrefix}）</option>
+              ))}
             </select>
           </label>
 
           <label className="space-y-1.5 md:col-span-2">
-            <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">路径 * {form.type === "link" ? "(外链 URL)" : form.type === "iframe" ? "(嵌入页面 URL)" : "(如 /projects/demo)"}</span>
-            <input value={form.path} onChange={(e) => setForm({ ...form, path: e.target.value })} disabled={isBuiltin} placeholder={form.type === "link" ? "https://..." : "/projects/demo"} className="w-full rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2.5 text-sm text-slate-100 outline-none disabled:opacity-60" />
+            <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
+              路径 * {form.type === "link" ? "(外链 URL)" : form.type === "iframe" ? "(嵌入页面 URL)" : `(如 ${currentPrefix}/demo，前缀 ${currentPrefix} 可省略)`}
+            </span>
+            <div className="flex items-center gap-2">
+              {form.type === "page" && (
+                <span className="rounded-lg border border-white/8 bg-[#101b2d] px-2.5 py-2.5 text-xs text-slate-400 select-none">{currentPrefix}/</span>
+              )}
+              <input
+                value={form.type === "page" && form.path.startsWith(currentPrefix + "/") ? form.path.slice(currentPrefix.length + 1) : form.path}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (form.type === "page" && currentPrefix) {
+                    setForm({ ...form, path: val.startsWith("/") || val.startsWith("http") ? val : `${currentPrefix}/${val}` })
+                  } else {
+                    setForm({ ...form, path: val })
+                  }
+                }}
+                disabled={isBuiltin}
+                placeholder={form.type === "link" ? "https://..." : "demo"}
+                className="flex-1 rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2.5 text-sm text-slate-100 outline-none disabled:opacity-60"
+              />
+            </div>
+            {form.type === "page" && form.path && <p className="text-[11px] text-slate-500">最终路径：{form.path}</p>}
           </label>
 
           {(form.type === "link" || form.type === "iframe") && (
@@ -188,10 +225,12 @@ export default function RoutesManagerPage() {
   const [menus, setMenus] = useState<SidebarMenuItem[]>([])
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<"all" | RouteType>("all")
-  const [groupFilter, setGroupFilter] = useState<"all" | "system" | "project" | "personal">("all")
+  const [groupFilter, setGroupFilter] = useState<string>("all")
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<RouteDefinition | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const menuGroups = useMemo(() => getMenuGroups(menus), [menus])
 
   const refresh = () => {
     setRoutes(getStoredRoutes())
@@ -224,7 +263,7 @@ export default function RoutesManagerPage() {
   const filteredRoutes = useMemo(() => {
     return routes.filter((r) => {
       if (typeFilter !== "all" && r.type !== typeFilter) return false
-      if (groupFilter !== "all" && (r.group ?? "project") !== groupFilter) return false
+      if (groupFilter !== "all" && (r.group ?? "") !== groupFilter) return false
       if (search) {
         const q = search.toLowerCase()
         return r.title.toLowerCase().includes(q) || r.path.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)
@@ -297,11 +336,11 @@ export default function RoutesManagerPage() {
             <option value="link">外链</option>
             <option value="iframe">嵌入</option>
           </select>
-          <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value as any)} className="rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2 text-sm text-slate-100 outline-none">
-            <option value="all">全部分组</option>
-            <option value="system">系统</option>
-            <option value="project">项目</option>
-            <option value="personal">个人</option>
+          <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2 text-sm text-slate-100 outline-none">
+            <option value="all">全部菜单</option>
+            {menuGroups.map((g) => (
+              <option key={g.pathPrefix} value={g.pathPrefix}>{g.label}</option>
+            ))}
           </select>
           <button type="button" onClick={refresh} className="rounded-xl border border-white/8 bg-[#101b2d] px-3 py-2 text-sm text-slate-200">刷新</button>
           <button type="button" onClick={handleReset} className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">重置</button>
@@ -346,7 +385,7 @@ export default function RoutesManagerPage() {
                       <td className="px-4 py-3">
                         <span className={`rounded-full border px-2 py-0.5 text-[10px] ${typeInfo.color}`}>{typeInfo.label}</span>
                       </td>
-                      <td className="px-4 py-3 text-slate-400">{route.group ?? "-"}</td>
+                      <td className="px-4 py-3 text-slate-400">{getGroupLabelByPrefix(route.group, menus)}</td>
                       <td className="px-4 py-3 text-center">
                         {refs > 0 ? <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">{refs}</span> : <span className="text-slate-600">0</span>}
                       </td>
@@ -386,7 +425,7 @@ export default function RoutesManagerPage() {
                   <InfoRow label="ID" value={<code className="text-xs text-slate-300">{selectedRoute.id}</code>} />
                   <InfoRow label="路径" value={<code className="text-xs text-slate-300 break-all">{selectedRoute.path}</code>} />
                   <InfoRow label="类型" value={<span className={`rounded-full border px-2 py-0.5 text-[10px] ${ROUTE_TYPE_LABEL[selectedRoute.type].color}`}>{ROUTE_TYPE_LABEL[selectedRoute.type].label}</span>} />
-                  <InfoRow label="分组" value={selectedRoute.group ?? "-"} />
+                  <InfoRow label="所属菜单" value={getGroupLabelByPrefix(selectedRoute.group, menus)} />
                   <InfoRow label="可见" value={selectedRoute.visible !== false ? "是" : "否"} />
                   <InfoRow label="打开方式" value={selectedRoute.target ?? "_self"} />
                   {selectedRoute.roles && selectedRoute.roles.length > 0 && <InfoRow label="角色" value={selectedRoute.roles.join(", ")} />}
@@ -424,7 +463,7 @@ export default function RoutesManagerPage() {
         </div>
       </div>
 
-      {showModal && <RouteFormModal editing={editing} onClose={() => { setShowModal(false); setEditing(null) }} onSave={() => { setShowModal(false); setEditing(null); refresh() }} />}
+      {showModal && <RouteFormModal editing={editing} menuGroups={menuGroups} onClose={() => { setShowModal(false); setEditing(null) }} onSave={() => { setShowModal(false); setEditing(null); refresh() }} />}
     </SystemShell>
   )
 }

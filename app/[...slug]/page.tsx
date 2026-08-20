@@ -3,12 +3,14 @@ import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import WorkspaceShell from "../components/WorkspaceShell"
 import { getStoredRoutes, type RouteDefinition } from "../lib/routes"
+import { getGroupLabelByPrefix, getStoredSidebarItems } from "../lib/sidebar-menu"
 import { ExternalLink, FileText, Globe, AlertTriangle } from "lucide-react"
 
 export default function DynamicRoutePage() {
   const pathname = usePathname()
   const [route, setRoute] = useState<RouteDefinition | null | undefined>(undefined)
   const [routes, setRoutes] = useState<RouteDefinition[]>([])
+  const [menus, setMenus] = useState(getStoredSidebarItems())
 
   useEffect(() => {
     const allRoutes = getStoredRoutes()
@@ -122,8 +124,8 @@ export default function DynamicRoutePage() {
               <div className="mt-1 font-mono text-xs text-slate-400">{route.id}</div>
             </div>
             <div className="rounded-xl border border-white/8 bg-[#0b1220] p-3">
-              <div className="text-[11px] uppercase tracking-wider text-slate-500">分组</div>
-              <div className="mt-1 text-sm text-slate-200">{route.group === "system" ? "系统" : route.group === "project" ? "项目" : route.group === "personal" ? "个人" : "未分组"}</div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500">所属菜单</div>
+              <div className="mt-1 text-sm text-slate-200">{getGroupLabelByPrefix(route.group, menus)}</div>
             </div>
           </div>
           <div className="mt-6 rounded-xl border border-dashed border-white/10 bg-[#0b1220]/50 p-6 text-center">

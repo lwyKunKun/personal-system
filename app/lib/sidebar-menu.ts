@@ -8,6 +8,8 @@ export interface SidebarMenuItem {
   id?: string
   label: string
   group?: MenuGroup
+  // 一级菜单的路径前缀（如 /system、/projects、/personal），子菜单路由自动加上此前缀
+  pathPrefix?: string
   icon?: string
   iconName?: string
   iconClass?: string
@@ -33,7 +35,7 @@ function withChildren(children?: SidebarMenuItem[]): SidebarMenuItem[] | undefin
 // 默认菜单：使用 routeId 关联路由表
 export const DEFAULT_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   {
-    id: "system", label: "系统", group: "system", visible: true, sortOrder: 10, iconName: "Settings",
+    id: "system", label: "系统", group: "system", pathPrefix: "/system", visible: true, sortOrder: 10, iconName: "Settings",
     children: [
       { id: "system-menus", label: "菜单管理", group: "system", visible: true, sortOrder: 10, iconName: "PanelTop", routeId: "system-menus" },
       { id: "system-routes", label: "路由管理", group: "system", visible: true, sortOrder: 20, iconName: "Route", routeId: "system-routes" },
@@ -42,7 +44,7 @@ export const DEFAULT_SIDEBAR_ITEMS: SidebarMenuItem[] = [
     ],
   },
   {
-    id: "project", label: "项目", group: "project", visible: true, sortOrder: 20, iconName: "FolderOpen",
+    id: "project", label: "项目", group: "project", pathPrefix: "/projects", visible: true, sortOrder: 20, iconName: "FolderOpen",
     children: [
       { id: "project-stock", label: "股票", group: "project", visible: true, sortOrder: 10, iconName: "CandlestickChart", routeId: "project-stock" },
       { id: "project-bookshelf", label: "书架", group: "project", visible: true, sortOrder: 20, iconName: "Library", routeId: "project-bookshelf" },
@@ -52,7 +54,7 @@ export const DEFAULT_SIDEBAR_ITEMS: SidebarMenuItem[] = [
     ],
   },
   {
-    id: "personal", label: "个人", group: "personal", visible: true, sortOrder: 30, iconName: "UserRound",
+    id: "personal", label: "个人", group: "personal", pathPrefix: "/personal", visible: true, sortOrder: 30, iconName: "UserRound",
     children: [
       { id: "personal-recent", label: "最近", group: "personal", visible: true, sortOrder: 10, iconName: "Clock3", routeId: "personal-recent" },
       { id: "personal-favorites", label: "收藏", group: "personal", visible: true, sortOrder: 20, iconName: "Star", routeId: "personal-favorites" },
@@ -159,6 +161,19 @@ export function resetSidebarItems() {
   saveStoredSidebarItems(DEFAULT_SIDEBAR_ITEMS)
 }
 
+// 根据菜单索引路径获取所属一级分组的 pathPrefix
+// path 是索引数组，如 [0, 1] 表示第一个分组下的第二个子菜单
+export function getGroupPathPrefix(items: SidebarMenuItem[], path: number[]): string | undefined {
+  if (path.length === 0) return undefined
+  const topLevelItem = items[path[0]]
+  return topLevelItem?.pathPrefix
+}
+
+// 判断是否是顶级菜单（一级分组）
+export function isTopLevelMenu(path: number[]): boolean {
+  return path.length === 1
+}
+
 // 查找所有引用指定路由的菜单项（返回菜单路径信息）
 export function findMenuItemsByRouteId(
   routeId: string,
@@ -176,4 +191,29 @@ export function findMenuItemsByRouteId(
     }
   }
   return results
+}
+
+// 一级菜单分组信息
+export interface MenuGroupInfo {
+  label: string
+  pathPrefix: string
+  id?: string
+}
+
+// 获取所有一级菜单分组（用于路由分组下拉框）
+export function getMenuGroups(items: SidebarMenuItem[] = getStoredSidebarItems()): MenuGroupInfo[] {
+  return items
+    .filter((item) => item.pathPrefix)
+    .map((item) => ({
+      label: item.label,
+      pathPrefix: item.pathPrefix!,
+      id: item.id,
+    }))
+}
+
+// 根据分组路径前缀查找分组标签
+export function getGroupLabelByPrefix(prefix: string | undefined, items: SidebarMenuItem[] = getStoredSidebarItems()): string {
+  if (!prefix) return "-"
+  const found = items.find((item) => item.pathPrefix === prefix)
+  return found?.label ?? prefix
 }
