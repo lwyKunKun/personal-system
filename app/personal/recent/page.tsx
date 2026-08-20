@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import WorkspaceShell from "../../components/WorkspaceShell"
-import { getPersonalState, normalizePersonalPath, removePersonalEntry, savePersonalState } from "../../../lib/personal"
+import { getPersonalState, normalizePersonalPath, removePersonalEntry, savePersonalState } from "../../lib/personal"
 
 export default function PersonalRecentPage() {
   const [items, setItems] = useState<string[]>([])

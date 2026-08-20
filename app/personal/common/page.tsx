@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import WorkspaceShell from "../../components/WorkspaceShell"
-import { addPersonalEntry, getPersonalState, normalizePersonalPath, removePersonalEntry, savePersonalState } from "../../../lib/personal"
+import { addPersonalEntry, getPersonalState, normalizePersonalPath, removePersonalEntry, savePersonalState } from "../../lib/personal"
 
 const DEFAULT_COMMON_ITEMS = ["/projects/stock", "/projects/bookshelf", "/system/menus", "/personal/favorites"]
 

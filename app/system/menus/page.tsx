@@ -110,7 +110,6 @@ export default function MenusManagerPage() {
   const [newIconName, setNewIconName] = useState("")
   const [newRouteId, setNewRouteId] = useState("")
   const [newRoles, setNewRoles] = useState("")
-  const [newGroup, setNewGroup] = useState<"system" | "project" | "personal">("project")
   const [newVisible, setNewVisible] = useState(true)
   const [jsonText, setJsonText] = useState("")
   const [showJson, setShowJson] = useState(false)
@@ -164,18 +163,18 @@ export default function MenusManagerPage() {
 
   const addItem = () => {
     const label = newLabel.trim(); if (!label) { setStatusText("菜单名称不能为空"); return }
-    const next = [...items, { label, group: newGroup, icon: newIcon.trim() || undefined, iconName: newIconName.trim() || undefined, routeId: newRouteId || undefined, roles: newRoles.trim() ? newRoles.split(",").map(s => s.trim()).filter(Boolean) : undefined, visible: newVisible, sortOrder: items.length, active: false }]
-    persist(next); setNewLabel(""); setNewIcon(""); setNewIconName(""); setNewRouteId(""); setNewRoles(""); setNewGroup("project"); setNewVisible(true); setStatusText("已添加菜单项")
+    const next = [...items, { label, icon: newIcon.trim() || undefined, iconName: newIconName.trim() || undefined, routeId: newRouteId || undefined, roles: newRoles.trim() ? newRoles.split(",").map(s => s.trim()).filter(Boolean) : undefined, visible: newVisible, sortOrder: items.length, active: false }]
+    persist(next); setNewLabel(""); setNewIcon(""); setNewIconName(""); setNewRouteId(""); setNewRoles(""); setNewVisible(true); setStatusText("已添加菜单分组")
   }
 
   const addChildItem = (path: number[]) => {
     const label = newLabel.trim(); if (!label) { setStatusText("子菜单名称不能为空"); return }
     setItems((prev) => {
       const next = JSON.parse(JSON.stringify(prev)) as SidebarMenuItem[]; const target = getItemByPath(next, path); if (!target) return prev
-      target.children = [...(target.children ?? []), { label, group: newGroup, icon: newIcon.trim() || undefined, iconName: newIconName.trim() || undefined, visible: newVisible, sortOrder: target.children?.length ?? 0, routeId: newRouteId || undefined, roles: newRoles.trim() ? newRoles.split(",").map(s => s.trim()).filter(Boolean) : undefined, active: false }]
+      target.children = [...(target.children ?? []), { label, icon: newIcon.trim() || undefined, iconName: newIconName.trim() || undefined, visible: newVisible, sortOrder: target.children?.length ?? 0, routeId: newRouteId || undefined, roles: newRoles.trim() ? newRoles.split(",").map(s => s.trim()).filter(Boolean) : undefined, active: false }]
       saveStoredSidebarItems(next); return next
     })
-    setNewLabel(""); setNewIcon(""); setNewIconName(""); setNewRouteId(""); setNewRoles(""); setNewGroup("project"); setNewVisible(true); setStatusText("已添加子菜单")
+    setNewLabel(""); setNewIcon(""); setNewIconName(""); setNewRouteId(""); setNewRoles(""); setNewVisible(true); setStatusText("已添加子菜单")
   }
 
   const updateItem = (path: number[], patch: Partial<SidebarMenuItem>) => {
@@ -272,18 +271,19 @@ export default function MenusManagerPage() {
               </div>
             </div>
             <div className="mb-3 flex flex-wrap gap-2">{MENU_TEMPLATES.map(t => (<button key={t.id} type="button" onClick={() => applyMenuTemplate(t.items)} className="rounded-lg border border-white/8 bg-[#101b2d] px-2.5 py-1.5 text-[11px] text-slate-200">{t.label}</button>))}</div>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="菜单名称" className="rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2.5 text-sm text-slate-100 outline-none" />
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1.5fr_auto_auto]">
+              <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="菜单名称（新分组或子项）" className="rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2.5 text-sm text-slate-100 outline-none" />
               <select value={newRouteId} onChange={e => setNewRouteId(e.target.value)} className="rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2.5 text-sm text-slate-100 outline-none">
-                <option value="">选择路由...</option>
+                <option value="">选择路由（可选）...</option>
                 {routes.filter(r => r.visible !== false || r.type === "builtin").map(r => (<option key={r.id} value={r.id}>{r.title} ({r.path})</option>))}
               </select>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setShowQuickCreate({ onCreated: (r) => { setNewRouteId(r.id); setNewLabel(newLabel || r.title) } })} className="rounded-xl border border-dashed border-[#f68f4d]/50 bg-[#f68f4d]/5 px-2 py-2 text-xs text-[#ffb476]">+ 新建路由</button>
-                <select value={newGroup} onChange={e => setNewGroup(e.target.value as any)} className="flex-1 rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2.5 text-sm text-slate-100 outline-none"><option value="system">系统</option><option value="project">项目</option><option value="personal">个人</option></select>
-              </div>
-              <input value={newRoles} onChange={e => setNewRoles(e.target.value)} placeholder="角色：admin,user" className="rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2.5 text-sm text-slate-100 outline-none" />
-              <button type="button" onClick={addItem} className="rounded-xl bg-[#f68f4d] px-3 py-2.5 text-sm font-medium text-white">添加菜单</button>
+              <button type="button" onClick={() => setShowQuickCreate({ onCreated: (r) => { setNewRouteId(r.id); setNewLabel(newLabel || r.title) } })} className="rounded-xl border border-dashed border-[#f68f4d]/50 bg-[#f68f4d]/5 px-3 py-2.5 text-xs text-[#ffb476]">+ 新建路由</button>
+              <button type="button" onClick={addItem} className="rounded-xl bg-[#f68f4d] px-4 py-2.5 text-sm font-medium text-white">添加</button>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input value={newRoles} onChange={e => setNewRoles(e.target.value)} placeholder="角色限制（可选，如 admin,user）" className="w-56 rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2 text-sm text-slate-100 outline-none" />
+              <label className="inline-flex items-center gap-2 rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2 text-xs text-slate-200"><input type="checkbox" checked={newVisible} onChange={e => setNewVisible(e.target.checked)} className="h-3.5 w-3.5" />可见</label>
+              <span className="text-xs text-slate-500">提示：选中菜单树中的节点后点击 + 可添加子菜单</span>
             </div>
             <div className="mt-3 space-y-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -291,7 +291,15 @@ export default function MenusManagerPage() {
                 <input value={newIcon} onChange={e => setNewIcon(e.target.value)} placeholder="emoji" className="w-24 rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2 text-sm text-slate-100 outline-none" />
                 <label className="inline-flex items-center gap-2 rounded-xl border border-white/8 bg-[#0b1220] px-3 py-2 text-xs text-slate-200"><input type="checkbox" checked={newVisible} onChange={e => setNewVisible(e.target.checked)} className="h-3.5 w-3.5" />可见</label>
               </div>
-              <div className="flex flex-wrap gap-2">{LUCIDE_ICON_OPTIONS.map(n => { const I = ICON_MAP[n]; const act = newIconName === n; return (<button key={n} type="button" title={n} onClick={() => setNewIconName(n)} className={`flex h-8 w-8 items-center justify-center rounded-lg border ${act ? "border-[#f68f4d] bg-[#f68f4d]/15 text-[#ffb476]" : "border-white/8 bg-[#0b1220] text-slate-200 hover:border-[#f68f4d]/40"}`}>{I ? <I className="h-4 w-4"/> : n[0]}</button>))}</div>
+              <div className="flex flex-wrap gap-2">{LUCIDE_ICON_OPTIONS.map(n => {
+                const Icon = ICON_MAP[n]
+                const act = newIconName === n
+                return (
+                  <button key={n} type="button" title={n} onClick={() => setNewIconName(n)} className={`flex h-8 w-8 items-center justify-center rounded-lg border ${act ? "border-[#f68f4d] bg-[#f68f4d]/15 text-[#ffb476]" : "border-white/8 bg-[#0b1220] text-slate-200 hover:border-[#f68f4d]/40"}`}>
+                    {Icon ? <Icon className="h-4 w-4" /> : n[0]}
+                  </button>
+                )
+              })}</div>
             </div>
           </div>
 

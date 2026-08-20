@@ -5,19 +5,20 @@
  */
 
 import type { Metadata } from "next"
-import "./globals.css" // 引入全局样式
+import "./globals.css"
 
-// 页面元信息（title / description），用于 SEO 与浏览器标题栏
 export const metadata: Metadata = {
   title: "Vibe-Research",
   description: "AI 投研资讯与市场复盘界面",
 }
 
-// RootLayout 组件：包裹所有页面内容，并设置语言与基础 class
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="zh-CN" className="h-full antialiased">
-      {/* body 使用深色背景并应用全局文本颜色 */}
       <body className="min-h-full bg-[#050b17] text-slate-100">{children}</body>
     </html>
   )

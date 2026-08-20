@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import WorkspaceShell from "../../components/WorkspaceShell"
-import { addPersonalEntry, getPersonalState, normalizePersonalPath, removePersonalEntry } from "../../../lib/personal"
+import { addPersonalEntry, getPersonalState, normalizePersonalPath, removePersonalEntry } from "../../lib/personal"
 
 export default function PersonalFavoritesPage() {
   const [items, setItems] = useState<string[]>([])
