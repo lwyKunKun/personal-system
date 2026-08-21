@@ -101,11 +101,17 @@ export function filterMenuTreeByPermissions(
 
     if (item.children && item.children.length > 0) {
       const filteredChildren = item.children.map(filterItem).filter(Boolean) as SidebarMenuItem[]
-      if (filteredChildren.length === 0 && route) {
-        const permId = menuPermissionId(route.id)
-        if (!permissionIds.has(permId)) return null
+      if (filteredChildren.length === 0) {
+        // 没有可见子菜单：如果有路由绑定则检查自身权限，没有路由（纯分组头）则直接隐藏
+        if (route) {
+          const permId = menuPermissionId(route.id)
+          if (!permissionIds.has(permId)) return null
+          return { ...item, children: undefined }
+        }
+        // 无路由且无可见子项 → 隐藏该分组
+        return null
       }
-      return { ...item, children: filteredChildren.length > 0 ? filteredChildren : undefined }
+      return { ...item, children: filteredChildren }
     }
 
     if (route) {
@@ -134,4 +140,22 @@ export function getPermissionDescription(id: string, routes: RouteDefinition[] =
     return btn ? `按钮：${route?.title} - ${btn.name}` : id
   }
   return id
+}
+
+/**
+ * 检查当前用户是否有权限访问指定路径
+ * @param path 当前路径
+ * @param permissionIds 用户拥有的权限ID集合
+ * @param isAdmin 是否管理员（admin直接放行）
+ */
+export function hasRoutePermission(path: string, permissionIds: Set<string>, isAdmin: boolean): boolean {
+  if (isAdmin) return true
+  // 首页不需要权限
+  if (path === "/" || path === "") return true
+  const routes = getStoredRoutes()
+  const route = routes.find((r) => r.path === path)
+  if (!route) return true // 未注册到路由表的页面不拦截
+  if (route.builtin && route.id === "home") return true
+  const permId = menuPermissionId(route.id)
+  return permissionIds.has(permId)
 }
